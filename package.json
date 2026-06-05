@@ -19,9 +19,6 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/prasad0022/inkwell/issues"
-  },
   "homepage": "https://github.com/prasad0022/inkwell#readme",
   "devDependencies": {
     "concurrently": "^10.0.3"
