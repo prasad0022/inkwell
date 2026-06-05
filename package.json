@@ -1,0 +1,29 @@
+{
+  "name": "inkwell",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace=apps/frontend",
+    "dev:backend": "npm run dev --workspace=apps/backend",
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/prasad0022/inkwell.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/prasad0022/inkwell/issues"
+  },
+  "homepage": "https://github.com/prasad0022/inkwell#readme",
+  "devDependencies": {
+    "concurrently": "^10.0.3"
+  }
+}
