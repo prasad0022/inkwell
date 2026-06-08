@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Users ───────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // relations
+  ownedWorkspaces    Workspace[]       @relation("WorkspaceOwner")
+  workspaceMemberships WorkspaceMember[]
+  documents          Document[]        @relation("DocumentCreator")
+  activities         Activity[]
+
+  @@map("users")
+}
+
+// ─── Workspaces ───────────────────────────────────────────────────────────────
+
+model Workspace {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  slug        String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // relations
+  owner     User              @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  ownerId   String
+  members   WorkspaceMember[]
+  documents Document[]
+  activities Activity[]
+
+  @@map("workspaces")
+}
+
+// ─── Workspace Members ────────────────────────────────────────────────────────
+
+model WorkspaceMember {
+  id          String          @id @default(uuid())
+  role        WorkspaceRole   @default(VIEWER)
+  joinedAt    DateTime        @default(now())
+
+  // relations
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+// ─── Documents ────────────────────────────────────────────────────────────────
+
+model Document {
+  id        String   @id @default(uuid())
+  title     String   @default("Untitled")
+  content   Json?
+  emoji     String?
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // relations
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String
+  createdBy   User       @relation("DocumentCreator", fields: [createdById], references: [id])
+  createdById String
+  parent      Document?  @relation("DocumentChildren", fields: [parentId], references: [id])
+  parentId    String?
+  children    Document[] @relation("DocumentChildren")
+  activities  Activity[]
+
+  @@map("documents")
+}
+
+// ─── Activity Log ─────────────────────────────────────────────────────────────
+
+model Activity {
+  id        String       @id @default(uuid())
+  action    ActivityAction
+  createdAt DateTime     @default(now())
+
+  // relations
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String
+  document    Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  documentId  String?
+
+  @@map("activities")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum WorkspaceRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+enum ActivityAction {
+  DOCUMENT_CREATED
+  DOCUMENT_UPDATED
+  DOCUMENT_DELETED
+  MEMBER_INVITED
+  MEMBER_REMOVED
+}
