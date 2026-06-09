@@ -1,8 +1,9 @@
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
-import morgan from "morgan";
 import helmet from "helmet";
+import morgan from "morgan";
+import dotenv from "dotenv";
+import { prisma } from "./lib/prisma";
 
 dotenv.config();
 
@@ -14,14 +15,37 @@ app.use(helmet());
 app.use(morgan("dev"));
 app.use(express.json());
 
-app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    message: "Inkwell API is running",
-    timestamp: new Date().toISOString(),
-  });
+app.get("/health", async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({
+      status: "ok",
+      message: "Inkwell API is running",
+      database: "connected",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: "Inkwell API is running",
+      database: "disconnected",
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
-app.listen(PORT, () => {
-  console.log(`🖊️ Inkwell API running on http://localhost:${PORT}`);
-});
+async function main() {
+  try {
+    await prisma.$connect();
+    console.log("✅ Database connected");
+
+    app.listen(PORT, () => {
+      console.log(`🖊️  Inkwell API running on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error("❌ Database connection failed:", error);
+    process.exit(1);
+  }
+}
+
+main();
