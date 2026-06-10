@@ -4,6 +4,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import dotenv from "dotenv";
 import { prisma } from "./lib/prisma";
+import authRoutes from "./modules/auth/auth.routes";
 
 dotenv.config();
 
@@ -14,6 +15,9 @@ app.use(cors());
 app.use(helmet());
 app.use(morgan("dev"));
 app.use(express.json());
+
+// Routes
+app.use("/api/auth", authRoutes);
 
 app.get("/health", async (req, res) => {
   try {

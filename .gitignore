@@ -142,3 +142,5 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 >>>>>>> db782818a6f3576cd6a105e76f8b676e0676d9a1
+
+notes.txt

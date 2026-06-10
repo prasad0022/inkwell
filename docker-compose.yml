@@ -17,7 +17,7 @@ services:
     container_name: inkwell_redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "7379:6379"
     volumes:
       - redis_data:/data
 
