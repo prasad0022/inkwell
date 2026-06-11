@@ -5,6 +5,7 @@ import morgan from "morgan";
 import dotenv from "dotenv";
 import { prisma } from "./lib/prisma";
 import authRoutes from "./modules/auth/auth.routes";
+import workspaceRoutes from "./modules/workspace/workspace.routes";
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(express.json());
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/workspaces", workspaceRoutes);
 
 app.get("/health", async (req, res) => {
   try {
