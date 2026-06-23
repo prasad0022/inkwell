@@ -135,7 +135,7 @@ export const getWorkspaceBySlug = async (slug: string, userId: string) => {
   }
 
   // Check if user is a member
-  const isMember = workspace.members.some((m) => m.userId === userId);
+  const isMember = workspace.members.some((m: any) => m.userId === userId);
   if (!isMember) {
     throw new Error("You do not have access to this workspace");
   }

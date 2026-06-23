@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma";
-import { WorkspaceRole } from "@prisma/client";
+import { WorkspaceRole } from ".prisma/client";
 
 export interface InviteMemberInput {
   workspaceSlug: string;
@@ -50,7 +50,7 @@ export const inviteMember = async (input: InviteMemberInput) => {
 
   // Check if already a member
   const alreadyMember = workspace.members.some(
-    (m) => m.userId === userToInvite.id,
+    (m: any) => m.userId === userToInvite.id,
   );
 
   if (alreadyMember) {
@@ -120,7 +120,7 @@ export const getWorkspaceMembers = async (
   }
 
   // Check requester is a member
-  const isMember = workspace.members.some((m) => m.userId === requesterId);
+  const isMember = workspace.members.some((m: any) => m.userId === requesterId);
   if (!isMember) {
     throw new Error("You do not have access to this workspace");
   }

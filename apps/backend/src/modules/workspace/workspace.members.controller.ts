@@ -5,7 +5,7 @@ import {
   updateMemberRole,
   removeMember,
 } from "./workspace.members.service";
-import { WorkspaceRole } from "@prisma/client";
+import { WorkspaceRole } from ".prisma/client";
 
 export const invite = async (req: Request, res: Response): Promise<void> => {
   try {
