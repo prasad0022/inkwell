@@ -28,10 +28,14 @@ export const createDocument = async (input: CreateDocumentInput) => {
     throw new Error("Workspace not found");
   }
 
-  const isMember = workspace.members.some((m: any) => m.userId === createdById);
+  const isMember = workspace.members.find((m: any) => m.userId === createdById);
 
   if (!isMember) {
     throw new Error("You do not have access to this workspace");
+  }
+
+  if (isMember.role === "VIEWER") {
+    throw new Error("Viewers cannot create documents");
   }
 
   // If parentId provided, verify parent document exists
@@ -90,11 +94,7 @@ export const createDocument = async (input: CreateDocumentInput) => {
   return document;
 };
 
-export const getWorkspaceDocuments = async (
-  workspaceId: string,
-  userId: string,
-) => {
-  // Verify user is a member
+export const getWorkspaceDocuments = async (workspaceId: string) => {
   const workspace = await prisma.workspace.findUnique({
     where: { id: workspaceId },
     include: { members: true },
@@ -102,12 +102,6 @@ export const getWorkspaceDocuments = async (
 
   if (!workspace) {
     throw new Error("Workspace not found");
-  }
-
-  const isMember = workspace.members.some((m: any) => m.userId === userId);
-
-  if (!isMember) {
-    throw new Error("You do not have access to this workspace");
   }
 
   // Get only root documents (no parent) — children are nested inside
@@ -153,7 +147,7 @@ export const getWorkspaceDocuments = async (
   return documents;
 };
 
-export const getDocumentById = async (documentId: string, userId: string) => {
+export const getDocumentById = async (documentId: string) => {
   const document = await prisma.document.findUnique({
     where: { id: documentId },
     include: {
@@ -193,15 +187,6 @@ export const getDocumentById = async (documentId: string, userId: string) => {
     throw new Error("Document not found");
   }
 
-  // Check access — member of workspace OR document is public
-  const isMember = document.workspace.members.some(
-    (m: any) => m.userId === userId,
-  );
-
-  if (!isMember && !document.isPublic) {
-    throw new Error("You do not have access to this document");
-  }
-
   return document;
 };
 
@@ -221,19 +206,6 @@ export const updateDocument = async (
 
   if (!document) {
     throw new Error("Document not found");
-  }
-
-  // Check user is a member with edit rights
-  const member = document.workspace.members.find(
-    (m: any) => m.userId === userId,
-  );
-
-  if (!member) {
-    throw new Error("You do not have access to this document");
-  }
-
-  if (member.role === "VIEWER") {
-    throw new Error("Viewers cannot edit documents");
   }
 
   const updated = await prisma.document.update({
@@ -281,19 +253,6 @@ export const deleteDocument = async (documentId: string, userId: string) => {
 
   if (!document) {
     throw new Error("Document not found");
-  }
-
-  // Only owner or editor can delete
-  const member = document.workspace.members.find(
-    (m: any) => m.userId === userId,
-  );
-
-  if (!member) {
-    throw new Error("You do not have access to this document");
-  }
-
-  if (member.role === "VIEWER") {
-    throw new Error("Viewers cannot delete documents");
   }
 
   // Log activity before deletion

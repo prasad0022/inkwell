@@ -50,7 +50,7 @@ export const getByWorkspace = async (
     const { workspaceId } = req.params;
     const user = (req as any).user;
 
-    const documents = await getWorkspaceDocuments(workspaceId, user.id);
+    const documents = await getWorkspaceDocuments(workspaceId);
 
     res.status(200).json({
       success: true,
@@ -70,7 +70,7 @@ export const getOne = async (req: Request, res: Response): Promise<void> => {
     const { documentId } = req.params;
     const user = (req as any).user;
 
-    const document = await getDocumentById(documentId, user.id);
+    const document = await getDocumentById(documentId);
 
     res.status(200).json({
       success: true,

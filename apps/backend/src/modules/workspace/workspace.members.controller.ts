@@ -58,7 +58,7 @@ export const getMembers = async (
     const { slug } = req.params;
     const user = (req as any).user;
 
-    const members = await getWorkspaceMembers(slug, user.id);
+    const members = await getWorkspaceMembers(slug);
 
     res.status(200).json({
       success: true,
@@ -102,7 +102,6 @@ export const updateRole = async (
       workspaceSlug: slug,
       memberId,
       role: role as WorkspaceRole,
-      requesterId: user.id,
     });
 
     res.status(200).json({

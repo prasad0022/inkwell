@@ -98,7 +98,7 @@ export const getUserWorkspaces = async (userId: string) => {
   return workspaces;
 };
 
-export const getWorkspaceBySlug = async (slug: string, userId: string) => {
+export const getWorkspaceBySlug = async (slug: string) => {
   const workspace = await prisma.workspace.findUnique({
     where: { slug },
     include: {
@@ -134,18 +134,11 @@ export const getWorkspaceBySlug = async (slug: string, userId: string) => {
     throw new Error("Workspace not found");
   }
 
-  // Check if user is a member
-  const isMember = workspace.members.some((m: any) => m.userId === userId);
-  if (!isMember) {
-    throw new Error("You do not have access to this workspace");
-  }
-
   return workspace;
 };
 
 export const updateWorkspace = async (
   slug: string,
-  userId: string,
   input: UpdateWorkspaceInput,
 ) => {
   // Check if workspace exists and user is owner
@@ -155,10 +148,6 @@ export const updateWorkspace = async (
 
   if (!workspace) {
     throw new Error("Workspace not found");
-  }
-
-  if (workspace.ownerId !== userId) {
-    throw new Error("Only the workspace owner can update it");
   }
 
   const updated = await prisma.workspace.update({
@@ -185,17 +174,13 @@ export const updateWorkspace = async (
   return updated;
 };
 
-export const deleteWorkspace = async (slug: string, userId: string) => {
+export const deleteWorkspace = async (slug: string) => {
   const workspace = await prisma.workspace.findUnique({
     where: { slug },
   });
 
   if (!workspace) {
     throw new Error("Workspace not found");
-  }
-
-  if (workspace.ownerId !== userId) {
-    throw new Error("Only the workspace owner can delete it");
   }
 
   await prisma.workspace.delete({

@@ -60,7 +60,7 @@ export const getOne = async (req: Request, res: Response): Promise<void> => {
   try {
     const { slug } = req.params;
     const user = (req as any).user;
-    const workspace = await getWorkspaceBySlug(slug, user.id);
+    const workspace = await getWorkspaceBySlug(slug);
 
     res.status(200).json({
       success: true,
@@ -81,7 +81,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
     const { name, description } = req.body;
     const user = (req as any).user;
 
-    const workspace = await updateWorkspace(slug, user.id, {
+    const workspace = await updateWorkspace(slug, {
       name,
       description,
     });
@@ -105,7 +105,7 @@ export const remove = async (req: Request, res: Response): Promise<void> => {
     const { slug } = req.params;
     const user = (req as any).user;
 
-    const result = await deleteWorkspace(slug, user.id);
+    const result = await deleteWorkspace(slug);
 
     res.status(200).json({
       success: true,

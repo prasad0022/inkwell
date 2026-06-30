@@ -12,7 +12,6 @@ export interface UpdateMemberRoleInput {
   workspaceSlug: string;
   memberId: string;
   role: WorkspaceRole;
-  requesterId: string;
 }
 
 export interface RemoveMemberInput {
@@ -32,11 +31,6 @@ export const inviteMember = async (input: InviteMemberInput) => {
 
   if (!workspace) {
     throw new Error("Workspace not found");
-  }
-
-  // Only owner can invite
-  if (workspace.ownerId !== inviterId) {
-    throw new Error("Only the workspace owner can invite members");
   }
 
   // Find user by email
@@ -93,10 +87,7 @@ export const inviteMember = async (input: InviteMemberInput) => {
   return member;
 };
 
-export const getWorkspaceMembers = async (
-  workspaceSlug: string,
-  requesterId: string,
-) => {
+export const getWorkspaceMembers = async (workspaceSlug: string) => {
   const workspace = await prisma.workspace.findUnique({
     where: { slug: workspaceSlug },
     include: {
@@ -119,17 +110,11 @@ export const getWorkspaceMembers = async (
     throw new Error("Workspace not found");
   }
 
-  // Check requester is a member
-  const isMember = workspace.members.some((m: any) => m.userId === requesterId);
-  if (!isMember) {
-    throw new Error("You do not have access to this workspace");
-  }
-
   return workspace.members;
 };
 
 export const updateMemberRole = async (input: UpdateMemberRoleInput) => {
-  const { workspaceSlug, memberId, role, requesterId } = input;
+  const { workspaceSlug, memberId, role } = input;
 
   const workspace = await prisma.workspace.findUnique({
     where: { slug: workspaceSlug },
@@ -137,11 +122,6 @@ export const updateMemberRole = async (input: UpdateMemberRoleInput) => {
 
   if (!workspace) {
     throw new Error("Workspace not found");
-  }
-
-  // Only owner can update roles
-  if (workspace.ownerId !== requesterId) {
-    throw new Error("Only the workspace owner can update member roles");
   }
 
   // Can't change owner's role
