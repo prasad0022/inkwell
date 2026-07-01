@@ -8,7 +8,10 @@
     "db:generate": "prisma generate --schema=../../packages/database/prisma/schema.prisma"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1077.0",
+    "@aws-sdk/s3-request-presigner": "^3.1077.0",
     "@prisma/client": "^5.22.0",
+    "@types/multer": "^2.1.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
@@ -16,6 +19,7 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.0",
+    "multer": "^2.2.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",

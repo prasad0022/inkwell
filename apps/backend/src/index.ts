@@ -7,6 +7,7 @@ import { prisma } from "./lib/prisma";
 import authRoutes from "./modules/auth/auth.routes";
 import workspaceRoutes from "./modules/workspace/workspace.routes";
 import documentRoutes from "./modules/document/document.routes";
+import uploadRoutes from "./modules/upload/upload.routes";
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/workspaces", workspaceRoutes);
 app.use("/api/documents", documentRoutes);
+app.use("/api/upload", uploadRoutes);
 
 app.get("/health", async (req, res) => {
   try {
