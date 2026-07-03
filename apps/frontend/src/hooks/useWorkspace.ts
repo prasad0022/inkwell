@@ -1,15 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { workspaceApi, CreateWorkspaceInput } from "@/lib/api/workspace.api";
+import { Workspace } from "@/types/api";
 
 export const useWorkspaces = () => {
-  return useQuery({
+  return useQuery<Workspace[]>({
     queryKey: ["workspaces"],
     queryFn: workspaceApi.getAll,
   });
 };
 
 export const useWorkspace = (slug: string) => {
-  return useQuery({
+  return useQuery<Workspace>({
     queryKey: ["workspace", slug],
     queryFn: () => workspaceApi.getOne(slug),
     enabled: !!slug,

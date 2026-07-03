@@ -4,9 +4,10 @@ import {
   CreateDocumentInput,
   UpdateDocumentInput,
 } from "@/lib/api/document.api";
+import type { Document } from "@/types/api";
 
 export const useDocuments = (workspaceId: string) => {
-  return useQuery({
+  return useQuery<Document[]>({
     queryKey: ["documents", workspaceId],
     queryFn: () => documentApi.getByWorkspace(workspaceId),
     enabled: !!workspaceId,
@@ -14,7 +15,7 @@ export const useDocuments = (workspaceId: string) => {
 };
 
 export const useDocument = (documentId: string) => {
-  return useQuery({
+  return useQuery<Document>({
     queryKey: ["document", documentId],
     queryFn: () => documentApi.getOne(documentId),
     enabled: !!documentId,

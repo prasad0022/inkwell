@@ -2,25 +2,23 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const publicRoutes = ["/login", "/register"];
-// const authRoutes = ["/dashboard"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("accessToken")?.value;
 
-  // If trying to access auth page while logged in → redirect to dashboard
+  // If on public route and logged in → go to dashboard
   if (publicRoutes.includes(pathname) && token) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // If trying to access protected page without token → redirect to login
-  if (
-    !publicRoutes.includes(pathname) &&
-    !pathname.startsWith("/_next") &&
-    !pathname.startsWith("/api") &&
-    pathname !== "/" &&
-    !token
-  ) {
+  // If on protected route and not logged in → go to login
+  const isPublicRoute = publicRoutes.includes(pathname);
+  const isNextInternal = pathname.startsWith("/_next");
+  const isApiRoute = pathname.startsWith("/api");
+  const isRoot = pathname === "/";
+
+  if (!isPublicRoute && !isNextInternal && !isApiRoute && !isRoot && !token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
