@@ -32,6 +32,7 @@ export interface Workspace {
 export interface Document {
   id: string;
   title: string;
+  content: Record<string, unknown> | null;
   emoji: string | null;
   isPublic: boolean;
   workspaceId: string;

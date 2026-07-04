@@ -8,12 +8,12 @@ import Highlight from "@tiptap/extension-highlight";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import CharacterCount from "@tiptap/extension-character-count";
-import { useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import EditorToolbar from "./EditorToolbar";
 
 interface EditorProps {
-  content?: any;
-  onChange?: (content: any) => void;
+  content?: Record<string, unknown> | null;
+  onChange?: (content: Record<string, unknown> | null) => void;
   editable?: boolean;
   placeholder?: string;
 }

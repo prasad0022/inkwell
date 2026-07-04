@@ -9,7 +9,7 @@ export interface CreateDocumentInput {
 
 export interface UpdateDocumentInput {
   title?: string;
-  content?: string;
+  content?: Record<string, unknown>;
   emoji?: string;
   isPublic?: boolean;
 }

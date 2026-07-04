@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useWorkspaces, useCreateWorkspace } from "@/hooks/useWorkspace";
+import { useDocuments, useCreateDocument } from "@/hooks/useDocument";
 import { useLogout } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,12 +16,66 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, LogOut, ChevronRight } from "lucide-react";
-import type { User, Workspace } from "@/types/api";
+import { Plus, LogOut, ChevronRight, Loader2 } from "lucide-react";
 import { AxiosError } from "axios";
+import type { User, Workspace, Document } from "@/types/api";
+import type { ApiError } from "@/types/api";
 
 interface SidebarProps {
   user: User;
+}
+
+// Sub-component for document list under active workspace
+function WorkspaceDocuments({
+  workspaceId,
+  slug,
+  onCreateDocument,
+}: {
+  workspaceId: string;
+  slug: string;
+  onCreateDocument: () => void;
+}) {
+  const { data: documents, isLoading } = useDocuments(workspaceId);
+  const pathname = usePathname();
+
+  if (isLoading) {
+    return (
+      <div className="ml-4 space-y-1 mt-1">
+        {[1, 2].map((i) => (
+          <div key={i} className="h-6 bg-gray-100 rounded animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="ml-4 mt-1 space-y-0.5">
+      {documents?.map((doc: Document) => {
+        const isActive = pathname.includes(`/doc/${doc.id}`);
+        return (
+          <Link
+            key={doc.id}
+            href={`/dashboard/${slug}/doc/${doc.id}`}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
+              isActive
+                ? "bg-gray-100 text-gray-900 font-medium"
+                : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+            }`}
+          >
+            <span>{doc.emoji || "📝"}</span>
+            <span className="truncate">{doc.title || "Untitled"}</span>
+          </Link>
+        );
+      })}
+      <button
+        onClick={onCreateDocument}
+        className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors w-full"
+      >
+        <Plus className="h-3 w-3" />
+        <span>New document</span>
+      </button>
+    </div>
+  );
 }
 
 export default function Sidebar({ user }: SidebarProps) {
@@ -28,11 +83,20 @@ export default function Sidebar({ user }: SidebarProps) {
   const router = useRouter();
   const logout = useLogout();
   const { data: workspaces, isLoading } = useWorkspaces();
-  const { mutate: createWorkspace, isPending } = useCreateWorkspace();
+  const { mutate: createWorkspace, isPending: creatingWorkspace } =
+    useCreateWorkspace();
+  const { mutate: createDocument, isPending: creatingDocument } =
+    useCreateDocument();
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] =
+    useState(false);
+  const [showCreateDocumentModal, setShowCreateDocumentModal] = useState(false);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(
+    null,
+  );
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceDescription, setWorkspaceDescription] = useState("");
+  const [documentTitle, setDocumentTitle] = useState("");
 
   const handleCreateWorkspace = () => {
     if (!workspaceName.trim()) {
@@ -48,22 +112,55 @@ export default function Sidebar({ user }: SidebarProps) {
       {
         onSuccess: (data) => {
           toast.success("Workspace created!");
-          setShowCreateModal(false);
+          setShowCreateWorkspaceModal(false);
           setWorkspaceName("");
           setWorkspaceDescription("");
           router.push(`/dashboard/${data.slug}`);
         },
-        onError: (err: Error) => {
-          if (err instanceof AxiosError) {
-            toast.error(
-              err.response?.data?.message || "Failed to create workspace",
-            );
-          } else {
-            toast.error("Failed to create workspace");
-          }
+        onError: (error: Error) => {
+          const err = error as AxiosError<ApiError>;
+          toast.error(
+            err.response?.data?.message || "Failed to create workspace",
+          );
         },
       },
     );
+  };
+
+  const handleCreateDocument = () => {
+    if (!activeWorkspaceId) return;
+
+    createDocument(
+      {
+        title: documentTitle.trim() || "Untitled",
+        workspaceId: activeWorkspaceId,
+      },
+      {
+        onSuccess: (data) => {
+          toast.success("Document created!");
+          setShowCreateDocumentModal(false);
+          setDocumentTitle("");
+          // Find workspace slug
+          const workspace = workspaces?.find(
+            (w: Workspace) => w.id === activeWorkspaceId,
+          );
+          if (workspace) {
+            router.push(`/dashboard/${workspace.slug}/doc/${data.id}`);
+          }
+        },
+        onError: (error: Error) => {
+          const err = error as AxiosError<ApiError>;
+          toast.error(
+            err.response?.data?.message || "Failed to create document",
+          );
+        },
+      },
+    );
+  };
+
+  const openCreateDocument = (workspaceId: string) => {
+    setActiveWorkspaceId(workspaceId);
+    setShowCreateDocumentModal(true);
   };
 
   return (
@@ -87,7 +184,7 @@ export default function Sidebar({ user }: SidebarProps) {
               variant="ghost"
               size="sm"
               className="h-6 w-6 p-0"
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => setShowCreateWorkspaceModal(true)}
               title="New workspace"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -110,34 +207,46 @@ export default function Sidebar({ user }: SidebarProps) {
                 variant="outline"
                 size="sm"
                 className="w-full text-xs"
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => setShowCreateWorkspaceModal(true)}
               >
                 Create your first workspace
               </Button>
             </div>
           ) : (
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {workspaces?.map((workspace: Workspace) => {
                 const isActive = pathname.startsWith(
                   `/dashboard/${workspace.slug}`,
                 );
                 return (
-                  <Link
-                    key={workspace.id}
-                    href={`/dashboard/${workspace.slug}`}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
-                      isActive
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                    }`}
-                  >
-                    <ChevronRight
-                      className={`h-3.5 w-3.5 text-gray-400 transition-transform ${
-                        isActive ? "rotate-90" : ""
+                  <div key={workspace.id}>
+                    <Link
+                      href={`/dashboard/${workspace.slug}`}
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
+                        isActive
+                          ? "bg-gray-100 text-gray-900 font-medium"
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                       }`}
-                    />
-                    <span className="truncate">{workspace.name}</span>
-                  </Link>
+                    >
+                      <ChevronRight
+                        className={`h-3.5 w-3.5 text-gray-400 transition-transform shrink-0 ${
+                          isActive ? "rotate-90" : ""
+                        }`}
+                      />
+                      <span className="truncate">{workspace.name}</span>
+                    </Link>
+
+                    {/* Show documents under active workspace */}
+                    {isActive && (
+                      <WorkspaceDocuments
+                        workspaceId={workspace.id}
+                        slug={workspace.slug}
+                        onCreateDocument={() =>
+                          openCreateDocument(workspace.id)
+                        }
+                      />
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -172,7 +281,10 @@ export default function Sidebar({ user }: SidebarProps) {
       </aside>
 
       {/* Create workspace modal */}
-      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+      <Dialog
+        open={showCreateWorkspaceModal}
+        onOpenChange={setShowCreateWorkspaceModal}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create a workspace</DialogTitle>
@@ -205,13 +317,54 @@ export default function Sidebar({ user }: SidebarProps) {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setShowCreateModal(false)}
-              disabled={isPending}
+              onClick={() => setShowCreateWorkspaceModal(false)}
+              disabled={creatingWorkspace}
             >
               Cancel
             </Button>
-            <Button onClick={handleCreateWorkspace} disabled={isPending}>
-              {isPending ? "Creating..." : "Create workspace"}
+            <Button
+              onClick={handleCreateWorkspace}
+              disabled={creatingWorkspace}
+            >
+              {creatingWorkspace ? "Creating..." : "Create workspace"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create document modal */}
+      <Dialog
+        open={showCreateDocumentModal}
+        onOpenChange={setShowCreateDocumentModal}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New document</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <Input
+              placeholder="Document title (optional)"
+              value={documentTitle}
+              onChange={(e) => setDocumentTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreateDocument()}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateDocumentModal(false)}
+              disabled={creatingDocument}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateDocument}
+              disabled={creatingDocument}
+              className="gap-2"
+            >
+              {creatingDocument && <Loader2 className="h-4 w-4 animate-spin" />}
+              {creatingDocument ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
