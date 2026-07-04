@@ -22,13 +22,18 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Response interceptor — handle token expiry globally
+// Helper to delete cookie reliably
+const clearAuthCookies = () => {
+  document.cookie = "accessToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/";
+  document.cookie =
+    "refreshToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/";
+};
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // If 401 and we haven't already retried
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -36,14 +41,13 @@ apiClient.interceptors.response.use(
         const refreshToken = localStorage.getItem("refreshToken");
 
         if (!refreshToken) {
-          // No refresh token — clear storage and redirect to login
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
+          clearAuthCookies();
           window.location.href = "/login";
           return Promise.reject(error);
         }
 
-        // Try to get new access token
         const response = await axios.post(
           `${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh`,
           { refreshToken },
@@ -52,13 +56,18 @@ apiClient.interceptors.response.use(
         const { accessToken } = response.data.data;
         localStorage.setItem("accessToken", accessToken);
 
-        // Retry original request with new token
+        // Also update cookie so middleware stays in sync
+        const expires = new Date();
+        expires.setTime(expires.getTime() + 24 * 60 * 60 * 1000);
+        document.cookie = `accessToken=${accessToken};expires=${expires.toUTCString()};path=/`;
+
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
-        // Refresh failed — clear and redirect
+        // Refresh failed — clear everything including cookies
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
+        clearAuthCookies();
         window.location.href = "/login";
         return Promise.reject(refreshError);
       }

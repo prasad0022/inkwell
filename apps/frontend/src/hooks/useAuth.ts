@@ -33,7 +33,7 @@ export const useLogin = () => {
       // Storing in both localStorage (for axios) and cookie (for middleware)
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("refreshToken", data.refreshToken);
-      setCookie("accessToken", data.accessToken, 1); // 1 day cookie
+      setCookie("accessToken", data.accessToken, 7); // 7 day cookie
       queryClient.setQueryData(["me"], data.user);
       router.push("/dashboard");
     },

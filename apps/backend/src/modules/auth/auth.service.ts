@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma";
 import {
   generateAccessToken,
   generateRefreshToken,
+  verifyRefreshToken,
 } from "../../utils/jwt.utils";
 
 export interface RegisterInput {
@@ -114,4 +115,27 @@ export const getMe = async (userId: string) => {
   }
 
   return user;
+};
+
+export const refreshAccessToken = async (refreshToken: string) => {
+  try {
+    const decoded = verifyRefreshToken(refreshToken);
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const accessToken = generateAccessToken({
+      userId: user.id,
+      email: user.email,
+    });
+
+    return { accessToken };
+  } catch (error) {
+    throw new Error("Invalid refresh token");
+  }
 };

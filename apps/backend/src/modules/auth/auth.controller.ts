@@ -1,5 +1,10 @@
 import { Request, Response } from "express";
-import { registerUser, loginUser, getMe } from "./auth.service";
+import {
+  registerUser,
+  loginUser,
+  getMe,
+  refreshAccessToken,
+} from "./auth.service";
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -74,6 +79,32 @@ export const me = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error: any) {
     res.status(404).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const refresh = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      res.status(400).json({
+        success: false,
+        message: "Refresh token is required",
+      });
+      return;
+    }
+
+    const result = await refreshAccessToken(refreshToken);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    res.status(401).json({
       success: false,
       message: error.message,
     });
