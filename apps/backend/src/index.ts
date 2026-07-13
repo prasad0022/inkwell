@@ -1,4 +1,5 @@
 import express from "express";
+import { createServer } from "http";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -8,10 +9,12 @@ import authRoutes from "./modules/auth/auth.routes";
 import workspaceRoutes from "./modules/workspace/workspace.routes";
 import documentRoutes from "./modules/document/document.routes";
 import uploadRoutes from "./modules/upload/upload.routes";
+import { initializeSocket } from "./lib/socket";
 
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 4000;
 
 app.use(
@@ -55,7 +58,10 @@ async function main() {
     await prisma.$connect();
     console.log("✅ Database connected");
 
-    app.listen(PORT, () => {
+    const io = initializeSocket(httpServer);
+    console.log("⚡ Socket.io initialized");
+
+    httpServer.listen(PORT, () => {
       console.log(`🖊️  Inkwell API running on http://localhost:${PORT}`);
     });
   } catch (error) {
