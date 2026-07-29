@@ -1,14 +1,25 @@
+/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable react-hooks/refs */
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useDocument, useUpdateDocument } from "@/hooks/useDocument";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useMe } from "@/hooks/useAuth";
+import { useCollaboration } from "@/hooks/useCollaboration";
 import Editor from "@/components/editor/Editor";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
-import { ChevronRight, Loader2, Check, AlertCircle } from "lucide-react";
+import {
+  ChevronRight,
+  Loader2,
+  Check,
+  AlertCircle,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
 import Link from "next/link";
 import EmojiPicker from "emoji-picker-react";
 import {
@@ -16,7 +27,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-// import type { Document } from "@/types/api";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -26,86 +36,68 @@ export default function DocumentPage() {
   const slug = params.slug as string;
   const documentId = params.documentId as string;
 
-  // Rename to avoid conflict with browser's built-in `document`
   const { data: doc, isLoading } = useDocument(documentId);
   const { data: workspace } = useWorkspace(slug);
+  const { data: user } = useMe();
   const { mutate: updateDocument } = useUpdateDocument();
 
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState<Record<string, unknown> | null>(null);
   const [emoji, setEmoji] = useState("");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [isMounted, setIsMounted] = useState(false);
 
-  // Track initial load to prevent auto-save on first render
   const isInitialLoad = useRef(true);
-
-  const [debouncedContent] = useDebounce(content, 1000);
   const [debouncedTitle] = useDebounce(title, 1000);
 
-  // Declare handleSave BEFORE useEffects that use it
-  const handleSave = useCallback(
-    (data: {
-      title?: string;
-      content?: Record<string, unknown>;
-      emoji?: string;
-    }) => {
-      setSaveStatus("saving");
+  // Generate consistent color for this user
+  const userColor = useRef(
+    // eslint-disable-next-line react-hooks/purity
+    `#${Math.floor(Math.random() * 16777215)
+      .toString(16)
+      .padStart(6, "0")}`,
+  );
 
-      updateDocument(
-        { documentId, input: data },
-        {
-          onSuccess: () => {
-            setSaveStatus("saved");
-            setTimeout(() => setSaveStatus("idle"), 2000);
+  // Initialize collaboration
+  const { ydoc, isConnected, isSynced, connectedUsers } = useCollaboration({
+    documentId,
+    userId: user?.id || "",
+    userName: user?.name || "Anonymous",
+    enabled: isMounted && !!user && !!documentId,
+  });
+
+  const save = useCallback(
+    (data: { title?: string; emoji?: string }) => {
+      return new Promise<void>((resolve, reject) => {
+        updateDocument(
+          { documentId, input: data },
+          {
+            onSuccess: () => resolve(),
+            onError: () => reject(),
           },
-          onError: () => {
-            setSaveStatus("error");
-            toast.error("Failed to save document");
-          },
-        },
-      );
+        );
+      });
     },
     [documentId, updateDocument],
   );
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setIsMounted(true);
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
+    setIsMounted(true);
   }, []);
 
-  // Load document data into state once
   useEffect(() => {
     if (!doc) return;
 
     isInitialLoad.current = true;
+    setTitle(doc.title || "Untitled");
+    setEmoji(doc.emoji || "");
 
-    // Batch state updates to avoid cascading renders
     const timer = setTimeout(() => {
-      setTitle(doc.title || "Untitled");
-      setContent(doc.content || null);
-      setEmoji(doc.emoji || "");
       isInitialLoad.current = false;
-    }, 0);
+    }, 100);
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [doc?.id]); // only re-run when document ID changes, not on every doc update
-
-  // Auto-save content
-  useEffect(() => {
-    if (!isMounted) return;
-    if (isInitialLoad.current) return;
-    if (debouncedContent === null) return;
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    handleSave({ content: debouncedContent });
-  }, [debouncedContent, isMounted, handleSave]);
+  }, [doc?.id]);
 
   // Auto-save title
   useEffect(() => {
@@ -113,14 +105,43 @@ export default function DocumentPage() {
     if (isInitialLoad.current) return;
     if (!debouncedTitle) return;
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    handleSave({ title: debouncedTitle });
-  }, [debouncedTitle, isMounted, handleSave]);
+    let cancelled = false;
+
+    setSaveStatus("saving");
+    save({ title: debouncedTitle })
+      .then(() => {
+        if (!cancelled) {
+          setSaveStatus("saved");
+          setTimeout(() => {
+            if (!cancelled) setSaveStatus("idle");
+          }, 2000);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSaveStatus("error");
+          toast.error("Failed to save");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedTitle, isMounted, save]);
 
   const handleEmojiSelect = (emojiData: { emoji: string }) => {
     const newEmoji = emojiData.emoji;
     setEmoji(newEmoji);
-    handleSave({ emoji: newEmoji });
+    setSaveStatus("saving");
+    save({ emoji: newEmoji })
+      .then(() => {
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
+      })
+      .catch(() => {
+        setSaveStatus("error");
+        toast.error("Failed to save emoji");
+      });
   };
 
   if (!isMounted || isLoading) {
@@ -130,7 +151,6 @@ export default function DocumentPage() {
           <div className="h-10 w-64 bg-gray-200 rounded animate-pulse" />
           <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
           <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse" />
-          <div className="h-4 w-1/2 bg-gray-200 rounded animate-pulse" />
         </div>
       </div>
     );
@@ -176,26 +196,66 @@ export default function DocumentPage() {
           </span>
         </div>
 
-        {/* Save status */}
-        <div className="flex items-center gap-1.5 text-xs">
-          {saveStatus === "saving" && (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />
-              <span className="text-gray-400">Saving...</span>
-            </>
+        <div className="flex items-center gap-3">
+          {/* Connected users avatars */}
+          {connectedUsers.length > 0 && (
+            <div className="flex items-center gap-1">
+              {connectedUsers.slice(0, 4).map((u) => (
+                <div
+                  key={u.socketId}
+                  className="h-7 w-7 rounded-full flex items-center justify-center text-white text-xs font-medium ring-2 ring-white"
+                  style={{ backgroundColor: u.color }}
+                  title={u.name}
+                >
+                  {u.name.charAt(0).toUpperCase()}
+                </div>
+              ))}
+              {connectedUsers.length > 4 && (
+                <div className="h-7 w-7 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-600 ring-2 ring-white">
+                  +{connectedUsers.length - 4}
+                </div>
+              )}
+            </div>
           )}
-          {saveStatus === "saved" && (
-            <>
-              <Check className="h-3.5 w-3.5 text-green-500" />
-              <span className="text-green-500">Saved</span>
-            </>
-          )}
-          {saveStatus === "error" && (
-            <>
-              <AlertCircle className="h-3.5 w-3.5 text-red-500" />
-              <span className="text-red-500">Save failed</span>
-            </>
-          )}
+
+          {/* Connection status */}
+          <div className="flex items-center gap-1.5 text-xs">
+            {isConnected ? (
+              <>
+                <Wifi className="h-3.5 w-3.5 text-green-500" />
+                <span className="text-green-500">
+                  {isSynced ? "Live" : "Syncing..."}
+                </span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-3.5 w-3.5 text-gray-400" />
+                <span className="text-gray-400">Offline</span>
+              </>
+            )}
+          </div>
+
+          {/* Save status */}
+          <div className="flex items-center gap-1.5 text-xs">
+            {saveStatus === "saving" && (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />
+                <span className="text-gray-400">Saving...</span>
+              </>
+            )}
+            {saveStatus === "saved" && (
+              <>
+                <Check className="h-3.5 w-3.5 text-green-500" />
+                <span className="text-green-500">Saved</span>
+              </>
+            )}
+            {saveStatus === "error" && (
+              <>
+                <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+                <span className="text-red-500">Save failed</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -223,13 +283,19 @@ export default function DocumentPage() {
             className="w-full text-4xl font-bold text-gray-900 bg-transparent border-none outline-none placeholder-gray-300 mb-6"
           />
 
-          {/* Tiptap Editor */}
-          <Editor
-            content={content}
-            onChange={setContent}
-            editable={true}
-            placeholder="Start writing your note..."
-          />
+          {/* Collaborative Tiptap Editor */}
+          {isSynced && ydoc ? (
+            <Editor
+              ydoc={ydoc}
+              editable={true}
+              placeholder="Start writing your note..."
+            />
+          ) : (
+            <div className="flex items-center gap-2 text-gray-400 text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Connecting to live session...</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

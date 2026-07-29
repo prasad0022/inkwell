@@ -8,14 +8,18 @@ import Highlight from "@tiptap/extension-highlight";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import CharacterCount from "@tiptap/extension-character-count";
+import Collaboration from "@tiptap/extension-collaboration";
 import { useEffect } from "react";
 import EditorToolbar from "./EditorToolbar";
+import * as Y from "yjs";
 
 interface EditorProps {
   content?: Record<string, unknown> | null;
-  onChange?: (content: Record<string, unknown> | null) => void;
+  onChange?: (content: Record<string, unknown>) => void;
   editable?: boolean;
   placeholder?: string;
+  // Collaboration props
+  ydoc?: Y.Doc | null;
 }
 
 export default function Editor({
@@ -23,14 +27,18 @@ export default function Editor({
   onChange,
   editable = true,
   placeholder = "Start writing...",
+  ydoc,
 }: EditorProps) {
+  const isCollaborative = !!ydoc;
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
+      // When collaborative, StarterKit must disable history
+      // because Y.js handles undo/redo
       StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
+        history: isCollaborative ? false : undefined,
+        heading: { levels: [1, 2, 3] },
         bulletList: {
           keepMarks: true,
           keepAttributes: false,
@@ -40,36 +48,30 @@ export default function Editor({
           keepAttributes: false,
         },
       }),
-      Placeholder.configure({
-        placeholder,
-      }),
+      Placeholder.configure({ placeholder }),
       Typography,
-      Highlight.configure({
-        multicolor: true,
-      }),
+      Highlight.configure({ multicolor: true }),
       TaskList,
-      TaskItem.configure({
-        nested: true,
-      }),
+      TaskItem.configure({ nested: true }),
       CharacterCount,
+
+      // Collaboration extensions — only add when Y.js doc is available
+      ...(isCollaborative && ydoc
+        ? [
+            Collaboration.configure({
+              document: ydoc,
+            }),
+          ]
+        : []),
     ],
-    content: content || "",
+    content: isCollaborative ? undefined : content || "",
     editable,
     onUpdate: ({ editor }) => {
-      onChange?.(editor.getJSON());
+      if (!isCollaborative) {
+        onChange?.(editor.getJSON() as Record<string, unknown>);
+      }
     },
   });
-
-  // Update content when prop changes (for loading saved docs)
-  useEffect(() => {
-    if (
-      editor &&
-      content &&
-      JSON.stringify(editor.getJSON()) !== JSON.stringify(content)
-    ) {
-      editor.commands.setContent(content);
-    }
-  }, [content, editor]);
 
   // Update editable state
   useEffect(() => {
@@ -77,6 +79,15 @@ export default function Editor({
       editor.setEditable(editable);
     }
   }, [editable, editor]);
+
+  // Update content when prop changes (non-collaborative mode)
+  useEffect(() => {
+    if (editor && !isCollaborative && content) {
+      if (JSON.stringify(editor.getJSON()) !== JSON.stringify(content)) {
+        editor.commands.setContent(content);
+      }
+    }
+  }, [content, editor, isCollaborative]);
 
   if (!editor) return null;
 
@@ -90,9 +101,11 @@ export default function Editor({
         />
       </div>
       {editable && (
-        <div className="px-16 py-2 border-t border-gray-100 text-xs text-gray-400">
-          {editor.storage.characterCount.characters()} characters ·{" "}
-          {editor.storage.characterCount.words()} words
+        <div className="px-16 py-2 border-t border-gray-100 text-xs text-gray-400 flex items-center justify-between">
+          <span>
+            {editor.storage.characterCount.characters()} characters ·{" "}
+            {editor.storage.characterCount.words()} words
+          </span>
         </div>
       )}
     </div>

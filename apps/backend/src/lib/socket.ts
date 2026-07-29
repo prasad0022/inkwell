@@ -210,6 +210,13 @@ export const initializeSocket = (httpServer: HttpServer) => {
       });
     });
 
+    // ── Leave ──────────────────────────────────────────────────
+    socket.on("doc:leave", ({ documentId }: { documentId: string }) => {
+      socket.leave(`doc:${documentId}`);
+      removeUserFromRoom(documentId, socket.id, io);
+      console.log(`👤 User left doc:${documentId}`);
+    });
+
     // ── Disconnect ──────────────────────────────────────────────────
     socket.on("disconnect", () => {
       console.log(`⚡ Socket disconnected: ${socket.id}`);
