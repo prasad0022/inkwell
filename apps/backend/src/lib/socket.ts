@@ -3,6 +3,8 @@ import { Server as SocketServer, Socket } from "socket.io";
 import * as Y from "yjs";
 import { applyUpdate, encodeStateAsUpdate } from "yjs";
 import { prisma } from "./prisma";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { pubClient, subClient } from "./redis";
 
 // Store Y.js documents in memory — one per document ID
 const ydocs = new Map<string, Y.Doc>();
@@ -46,7 +48,7 @@ const getYDoc = (documentId: string): Y.Doc => {
   return ydocs.get(documentId)!;
 };
 
-export const initializeSocket = (httpServer: HttpServer) => {
+export const initializeSocket = async (httpServer: HttpServer) => {
   const io = new SocketServer(httpServer, {
     cors: {
       origin: ["http://localhost:3000", "https://inkwell-collab.vercel.app"],
@@ -54,6 +56,18 @@ export const initializeSocket = (httpServer: HttpServer) => {
       credentials: true,
     },
   });
+
+  // Connect Redis clients
+  try {
+    await Promise.all([pubClient.connect(), subClient.connect()]);
+
+    // Attach Redis adapter to Socket.io
+    io.adapter(createAdapter(pubClient, subClient));
+    console.log("✅ Redis pub/sub adapter connected");
+  } catch (error) {
+    console.warn("⚠️  Redis not available — running without pub/sub adapter");
+    console.warn("   Multi-instance sync will not work");
+  }
 
   io.on("connection", (socket: Socket) => {
     console.log(`⚡ Socket connected: ${socket.id}`);

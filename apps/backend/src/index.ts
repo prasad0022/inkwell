@@ -58,14 +58,15 @@ async function main() {
     await prisma.$connect();
     console.log("✅ Database connected");
 
-    const io = initializeSocket(httpServer);
+    // Initialize Socket.io with Redis adapter
+    await initializeSocket(httpServer);
     console.log("⚡ Socket.io initialized");
 
     httpServer.listen(PORT, () => {
       console.log(`🖊️  Inkwell API running on http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error("❌ Database connection failed:", error);
+    console.error("❌ Startup failed:", error);
     process.exit(1);
   }
 }
