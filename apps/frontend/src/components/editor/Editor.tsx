@@ -37,7 +37,6 @@ export default function Editor({
       // When collaborative, StarterKit must disable history
       // because Y.js handles undo/redo
       StarterKit.configure({
-        history: isCollaborative ? false : undefined,
         heading: { levels: [1, 2, 3] },
         bulletList: {
           keepMarks: true,
