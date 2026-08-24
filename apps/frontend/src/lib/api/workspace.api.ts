@@ -54,6 +54,18 @@ export const workspaceApi = {
     return data.data;
   },
 
+  updateMemberRole: async (
+    slug: string,
+    memberId: string,
+    role: "EDITOR" | "VIEWER",
+  ) => {
+    const { data } = await apiClient.patch(
+      `/api/workspaces/${slug}/members/${memberId}`,
+      { role },
+    );
+    return data.data;
+  },
+
   removeMember: async (slug: string, memberId: string) => {
     const { data } = await apiClient.delete(
       `/api/workspaces/${slug}/members/${memberId}`,

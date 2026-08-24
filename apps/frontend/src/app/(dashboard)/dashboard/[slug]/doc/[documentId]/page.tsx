@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useDocument, useUpdateDocument } from "@/hooks/useDocument";
-import { useWorkspace } from "@/hooks/useWorkspace";
+import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useMe } from "@/hooks/useAuth";
 import { useCollaboration } from "@/hooks/useCollaboration";
 import Editor from "@/components/editor/Editor";
@@ -19,6 +19,7 @@ import {
   AlertCircle,
   Wifi,
   WifiOff,
+  Eye,
 } from "lucide-react";
 import Link from "next/link";
 import EmojiPicker from "emoji-picker-react";
@@ -40,6 +41,15 @@ export default function DocumentPage() {
   const { data: workspace } = useWorkspace(slug);
   const { data: user } = useMe();
   const { mutate: updateDocument } = useUpdateDocument();
+  const { data: members } = useWorkspaceMembers(slug);
+
+  // Derive current user's role
+  const currentUserRole = members?.find(
+    (m: any) => m.user.id === user?.id,
+  )?.role;
+
+  const canEdit = currentUserRole === "OWNER" || currentUserRole === "EDITOR";
+  const roleResolved = !!currentUserRole;
 
   const [title, setTitle] = useState("");
   const [emoji, setEmoji] = useState("");
@@ -104,6 +114,8 @@ export default function DocumentPage() {
     if (!isMounted) return;
     if (isInitialLoad.current) return;
     if (!debouncedTitle) return;
+    if (!roleResolved) return;
+    if (!canEdit) return;
 
     let cancelled = false;
 
@@ -127,7 +139,7 @@ export default function DocumentPage() {
     return () => {
       cancelled = true;
     };
-  }, [debouncedTitle, isMounted, save]);
+  }, [debouncedTitle, isMounted, save, canEdit, roleResolved]);
 
   const handleEmojiSelect = (emojiData: { emoji: string }) => {
     const newEmoji = emojiData.emoji;
@@ -235,27 +247,37 @@ export default function DocumentPage() {
             )}
           </div>
 
-          {/* Save status */}
-          <div className="flex items-center gap-1.5 text-xs">
-            {saveStatus === "saving" && (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />
-                <span className="text-gray-400">Saving...</span>
-              </>
-            )}
-            {saveStatus === "saved" && (
-              <>
-                <Check className="h-3.5 w-3.5 text-green-500" />
-                <span className="text-green-500">Saved</span>
-              </>
-            )}
-            {saveStatus === "error" && (
-              <>
-                <AlertCircle className="h-3.5 w-3.5 text-red-500" />
-                <span className="text-red-500">Save failed</span>
-              </>
-            )}
-          </div>
+          {/* Save status — only for editors */}
+          {canEdit && (
+            <div className="flex items-center gap-1.5 text-xs">
+              {saveStatus === "saving" && (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />
+                  <span className="text-gray-400">Saving...</span>
+                </>
+              )}
+              {saveStatus === "saved" && (
+                <>
+                  <Check className="h-3.5 w-3.5 text-green-500" />
+                  <span className="text-green-500">Saved</span>
+                </>
+              )}
+              {saveStatus === "error" && (
+                <>
+                  <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+                  <span className="text-red-500">Save failed</span>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* For viewer */}
+          {!canEdit && currentUserRole && (
+            <div className="flex items-center gap-1.5 text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">
+              <Eye className="h-3 w-3" />
+              View only
+            </div>
+          )}
         </div>
       </div>
 
@@ -263,32 +285,43 @@ export default function DocumentPage() {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-8 py-10">
           {/* Emoji picker */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="text-4xl mb-4 hover:opacity-70 transition-opacity">
-                {emoji || "📝"}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 border-0">
-              <EmojiPicker onEmojiClick={handleEmojiSelect} />
-            </PopoverContent>
-          </Popover>
+          {canEdit ? (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="text-4xl mb-4 hover:opacity-70 transition-opacity">
+                  {emoji || "📝"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 border-0">
+                <EmojiPicker onEmojiClick={handleEmojiSelect} />
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <div className="text-4xl mb-4">{emoji || "📝"}</div>
+          )}
 
           {/* Editable title */}
           <input
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => canEdit && setTitle(e.target.value)}
             placeholder="Untitled"
-            className="w-full text-4xl font-bold text-gray-900 bg-transparent border-none outline-none placeholder-gray-300 mb-6"
+            readOnly={!canEdit}
+            className={`w-full text-4xl font-bold text-gray-900 bg-transparent border-none outline-none placeholder-gray-300 mb-6 ${
+              !canEdit ? "cursor-default" : ""
+            }`}
           />
 
           {/* Collaborative Tiptap Editor */}
           {isSynced && ydoc ? (
             <Editor
               ydoc={ydoc}
-              editable={true}
-              placeholder="Start writing your note..."
+              editable={canEdit}
+              placeholder={
+                canEdit
+                  ? "Start writing your note..."
+                  : "You have view-only access to this document."
+              }
             />
           ) : (
             <div className="flex items-center gap-2 text-gray-400 text-sm">

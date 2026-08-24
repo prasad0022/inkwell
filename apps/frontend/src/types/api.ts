@@ -45,3 +45,15 @@ export interface Document {
   };
   children?: Document[];
 }
+
+export interface WorkspaceMember {
+  id: string;
+  role: "OWNER" | "EDITOR" | "VIEWER";
+  joinedAt: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    avatar: string | null;
+  };
+}

@@ -19,6 +19,7 @@ import { Plus, FileText, ChevronRight, Loader2 } from "lucide-react";
 import { AxiosError } from "axios";
 import type { Document } from "@/types/api";
 import type { ApiError } from "@/types/api";
+import { Users } from "lucide-react";
 
 export default function WorkspacePage() {
   const params = useParams();
@@ -94,10 +95,18 @@ export default function WorkspacePage() {
               <p className="text-gray-500 mt-1">{workspace.description}</p>
             )}
           </div>
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New document
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link href={`/dashboard/${slug}/members`}>
+              <Button variant="outline" className="gap-2">
+                <Users className="h-4 w-4" />
+                Members
+              </Button>
+            </Link>
+            <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              New document
+            </Button>
+          </div>
         </div>
 
         {/* Documents list */}

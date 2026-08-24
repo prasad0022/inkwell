@@ -16,7 +16,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, LogOut, ChevronRight, Loader2 } from "lucide-react";
+import { Plus, LogOut, ChevronRight, Loader2, Users } from "lucide-react";
 import { AxiosError } from "axios";
 import type { User, Workspace, Document } from "@/types/api";
 import type { ApiError } from "@/types/api";
@@ -67,6 +67,19 @@ function WorkspaceDocuments({
           </Link>
         );
       })}
+
+      <Link
+        href={`/dashboard/${slug}/members`}
+        className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
+          pathname.includes("/members")
+            ? "bg-gray-100 text-gray-900 font-medium"
+            : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+        }`}
+      >
+        <Users className="h-3 w-3" />
+        <span>Members</span>
+      </Link>
+
       <button
         onClick={onCreateDocument}
         className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors w-full"
