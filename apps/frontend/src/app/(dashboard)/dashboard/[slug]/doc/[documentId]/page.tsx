@@ -4,7 +4,11 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useDocument, useUpdateDocument } from "@/hooks/useDocument";
+import {
+  useDocument,
+  useUpdateDocument,
+  useDeleteDocument,
+} from "@/hooks/useDocument";
 import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
 import { useMe } from "@/hooks/useAuth";
 import { useCollaboration } from "@/hooks/useCollaboration";
@@ -20,6 +24,8 @@ import {
   Wifi,
   WifiOff,
   Eye,
+  Trash2,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import EmojiPicker from "emoji-picker-react";
@@ -28,6 +34,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -42,6 +55,7 @@ export default function DocumentPage() {
   const { data: user } = useMe();
   const { mutate: updateDocument } = useUpdateDocument();
   const { data: members } = useWorkspaceMembers(slug);
+  const { mutate: deleteDocument, isPending: deleting } = useDeleteDocument();
 
   // Derive current user's role
   const currentUserRole = members?.find(
@@ -76,7 +90,7 @@ export default function DocumentPage() {
   });
 
   const save = useCallback(
-    (data: { title?: string; emoji?: string }) => {
+    (data: { title?: string; emoji?: string; isPublic?: boolean }) => {
       return new Promise<void>((resolve, reject) => {
         updateDocument(
           { documentId, input: data },
@@ -154,6 +168,31 @@ export default function DocumentPage() {
         setSaveStatus("error");
         toast.error("Failed to save emoji");
       });
+  };
+
+  const handleDelete = () => {
+    if (!confirm(`Delete "${title || "Untitled"}"? This cannot be undone.`))
+      return;
+
+    deleteDocument(documentId, {
+      onSuccess: () => {
+        toast.success("Document deleted");
+        router.push(`/dashboard/${slug}`);
+      },
+      onError: (err: Error) => {
+        toast.error(err.message || "Failed to delete document");
+      },
+    });
+  };
+
+  const handleTogglePublic = () => {
+    save({ isPublic: !doc?.isPublic })
+      .then(() =>
+        toast.success(
+          doc?.isPublic ? "Document is now private" : "Document is now public",
+        ),
+      )
+      .catch(() => toast.error("Failed to update document"));
   };
 
   if (!isMounted || isLoading) {
@@ -269,6 +308,31 @@ export default function DocumentPage() {
                 </>
               )}
             </div>
+          )}
+
+          {/* Settings dropdown — only for editors/owners */}
+          {canEdit && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Settings className="h-4 w-4 text-gray-400" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={handleTogglePublic}>
+                  {doc?.isPublic ? "🔒 Make private" : "🌐 Make public"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleDelete}
+                  className="text-red-600 focus:text-red-600"
+                  disabled={deleting}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete document
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {/* For viewer */}

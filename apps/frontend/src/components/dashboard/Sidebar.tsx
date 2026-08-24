@@ -30,10 +30,12 @@ function WorkspaceDocuments({
   workspaceId,
   slug,
   onCreateDocument,
+  canEdit,
 }: {
   workspaceId: string;
   slug: string;
   onCreateDocument: () => void;
+  canEdit: boolean;
 }) {
   const { data: documents, isLoading } = useDocuments(workspaceId);
   const pathname = usePathname();
@@ -80,13 +82,15 @@ function WorkspaceDocuments({
         <span>Members</span>
       </Link>
 
-      <button
-        onClick={onCreateDocument}
-        className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors w-full"
-      >
-        <Plus className="h-3 w-3" />
-        <span>New document</span>
-      </button>
+      {canEdit && (
+        <button
+          onClick={onCreateDocument}
+          className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors w-full"
+        >
+          <Plus className="h-3 w-3" />
+          <span>New document</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -231,6 +235,15 @@ export default function Sidebar({ user }: SidebarProps) {
                 const isActive = pathname.startsWith(
                   `/dashboard/${workspace.slug}`,
                 );
+
+                // Get current user's role in this workspace
+                const userMembership = workspace.members?.find(
+                  (m: any) => m.userId === user?.id || m.user?.id === user?.id,
+                );
+                const workspaceCanEdit =
+                  userMembership?.role === "OWNER" ||
+                  userMembership?.role === "EDITOR";
+
                 return (
                   <div key={workspace.id}>
                     <Link
@@ -257,6 +270,7 @@ export default function Sidebar({ user }: SidebarProps) {
                         onCreateDocument={() =>
                           openCreateDocument(workspace.id)
                         }
+                        canEdit={workspaceCanEdit}
                       />
                     )}
                   </div>

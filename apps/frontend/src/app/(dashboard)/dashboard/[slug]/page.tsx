@@ -3,8 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useWorkspace } from "@/hooks/useWorkspace";
-import { useDocuments, useCreateDocument } from "@/hooks/useDocument";
+import { useWorkspace, useWorkspaceMembers } from "@/hooks/useWorkspace";
+import { useMe } from "@/hooks/useAuth";
+import {
+  useDocuments,
+  useCreateDocument,
+  useDeleteDocument,
+} from "@/hooks/useDocument";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,7 +24,7 @@ import { Plus, FileText, ChevronRight, Loader2 } from "lucide-react";
 import { AxiosError } from "axios";
 import type { Document } from "@/types/api";
 import type { ApiError } from "@/types/api";
-import { Users } from "lucide-react";
+import { Users, Trash2 } from "lucide-react";
 
 export default function WorkspacePage() {
   const params = useParams();
@@ -31,9 +36,19 @@ export default function WorkspacePage() {
     workspace?.id || "",
   );
   const { mutate: createDocument, isPending: creating } = useCreateDocument();
+  const { mutate: deleteDocument, isPending: deleting } = useDeleteDocument();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [documentTitle, setDocumentTitle] = useState("");
+
+  const { data: currentUser } = useMe();
+  const { data: members } = useWorkspaceMembers(slug);
+
+  const currentUserRole = members?.find(
+    (m: any) => m.user.id === currentUser?.id,
+  )?.role;
+
+  const canEdit = currentUserRole === "OWNER" || currentUserRole === "EDITOR";
 
   const handleCreateDocument = () => {
     if (!workspace) return;
@@ -61,6 +76,23 @@ export default function WorkspacePage() {
         },
       },
     );
+  };
+
+  const handleDeleteDocument = (documentId: string, title: string) => {
+    if (!confirm(`Delete "${title || "Untitled"}"? This cannot be undone.`))
+      return;
+
+    deleteDocument(documentId, {
+      onSuccess: () => toast.success("Document deleted"),
+      onError: (error: Error) => {
+        const axiosError = error as AxiosError<ApiError>;
+        toast.error(
+          axiosError.isAxiosError
+            ? axiosError.response?.data?.message || "Failed to delete document"
+            : error.message || "Failed to delete document",
+        );
+      },
+    });
   };
 
   if (workspaceLoading) {
@@ -102,10 +134,15 @@ export default function WorkspacePage() {
                 Members
               </Button>
             </Link>
-            <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              New document
-            </Button>
+            {canEdit && (
+              <Button
+                onClick={() => setShowCreateModal(true)}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                New document
+              </Button>
+            )}
           </div>
         </div>
 
@@ -126,37 +163,54 @@ export default function WorkspacePage() {
             <p className="text-gray-400 text-sm mb-4">
               Create your first document to get started
             </p>
-            <Button
-              variant="outline"
-              onClick={() => setShowCreateModal(true)}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Create document
-            </Button>
+            {canEdit && (
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateModal(true)}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Create document
+              </Button>
+            )}
           </div>
         ) : (
           <div className="space-y-1">
             {documents?.map((doc: Document) => (
-              <Link
+              <div
                 key={doc.id}
-                href={`/dashboard/${slug}/doc/${doc.id}`}
                 className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all group"
               >
-                <span className="text-lg shrink-0">{doc.emoji || "📝"}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 truncate">
-                    {doc.title || "Untitled"}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {doc._count?.children && doc._count.children > 0
-                      ? `${doc._count.children} sub-pages · `
-                      : ""}
-                    Updated {new Date(doc.updatedAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
-              </Link>
+                <Link
+                  href={`/dashboard/${slug}/doc/${doc.id}`}
+                  className="flex items-center gap-3 flex-1 min-w-0"
+                >
+                  <span className="text-lg shrink-0">{doc.emoji || "📝"}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">
+                      {doc.title || "Untitled"}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {doc._count?.children && doc._count.children > 0
+                        ? `${doc._count.children} sub-pages · `
+                        : ""}
+                      Updated {new Date(doc.updatedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
+                </Link>
+
+                {/* Delete button — shows on hover */}
+                {canEdit && (
+                  <button
+                    onClick={() => handleDeleteDocument(doc.id, doc.title)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-red-50 hover:text-red-500 text-gray-400 shrink-0"
+                    title="Delete document"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         )}
