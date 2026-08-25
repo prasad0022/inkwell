@@ -19,10 +19,12 @@ import {
   Undo,
   Redo,
   Highlighter,
+  ImageIcon,
 } from "lucide-react";
 
 interface EditorToolbarProps {
   editor: Editor;
+  onUploadImage?: (file: File) => Promise<string>;
 }
 
 interface ToolbarButtonProps {
@@ -52,7 +54,10 @@ const ToolbarButton = ({
   </Button>
 );
 
-export default function EditorToolbar({ editor }: EditorToolbarProps) {
+export default function EditorToolbar({
+  editor,
+  onUploadImage,
+}: EditorToolbarProps) {
   return (
     <div className="flex items-center gap-1 px-4 py-2 border-b border-gray-100 flex-wrap sticky top-0 bg-white z-10">
       {/* Undo / Redo */}
@@ -176,6 +181,38 @@ export default function EditorToolbar({ editor }: EditorToolbarProps) {
       >
         <Minus className="h-4 w-4" />
       </ToolbarButton>
+
+      {/* Image upload */}
+      {onUploadImage && (
+        <>
+          <Separator orientation="vertical" className="h-6 mx-1" />
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            id="image-upload"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              onUploadImage(file)
+                .then((url) => {
+                  editor.chain().focus().setImage({ src: url }).run();
+                })
+                .catch((err) => {
+                  console.error("Upload failed:", err);
+                });
+              // Reset input so same file can be uploaded again
+              e.target.value = "";
+            }}
+          />
+          <ToolbarButton
+            onClick={() => document.getElementById("image-upload")?.click()}
+            title="Insert image"
+          >
+            <ImageIcon className="h-4 w-4" />
+          </ToolbarButton>
+        </>
+      )}
     </div>
   );
 }

@@ -41,6 +41,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { uploadImageToS3 } from "@/lib/upload-image";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -168,6 +169,16 @@ export default function DocumentPage() {
         setSaveStatus("error");
         toast.error("Failed to save emoji");
       });
+  };
+
+  const handleImageUpload = async (file: File): Promise<string> => {
+    try {
+      const url = await uploadImageToS3(file);
+      return url;
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload image");
+      throw err;
+    }
   };
 
   const handleDelete = () => {
@@ -386,6 +397,7 @@ export default function DocumentPage() {
                   ? "Start writing your note..."
                   : "You have view-only access to this document."
               }
+              onUploadImage={canEdit ? handleImageUpload : undefined}
             />
           ) : (
             <div className="flex items-center gap-2 text-gray-400 text-sm">
