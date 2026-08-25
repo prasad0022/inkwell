@@ -16,7 +16,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, LogOut, ChevronRight, Loader2, Users } from "lucide-react";
+import {
+  Plus,
+  LogOut,
+  ChevronRight,
+  Loader2,
+  Users,
+  Settings,
+} from "lucide-react";
 import { AxiosError } from "axios";
 import type { User, Workspace, Document } from "@/types/api";
 import type { ApiError } from "@/types/api";
@@ -81,6 +88,21 @@ function WorkspaceDocuments({
         <Users className="h-3 w-3" />
         <span>Members</span>
       </Link>
+
+      {/* Settings — only show for owners/editors */}
+      {canEdit && (
+        <Link
+          href={`/dashboard/${slug}/settings`}
+          className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
+            pathname.includes("/settings")
+              ? "bg-gray-100 text-gray-900 font-medium"
+              : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+          }`}
+        >
+          <Settings className="h-3 w-3" />
+          <span>Settings</span>
+        </Link>
+      )}
 
       {canEdit && (
         <button
@@ -235,14 +257,10 @@ export default function Sidebar({ user }: SidebarProps) {
                 const isActive = pathname.startsWith(
                   `/dashboard/${workspace.slug}`,
                 );
-
                 // Get current user's role in this workspace
-                const userMembership = workspace.members?.find(
-                  (m: any) => m.userId === user?.id || m.user?.id === user?.id,
-                );
+                const userRole = workspace.members?.[0]?.role;
                 const workspaceCanEdit =
-                  userMembership?.role === "OWNER" ||
-                  userMembership?.role === "EDITOR";
+                  userRole === "OWNER" || userRole === "EDITOR";
 
                 return (
                   <div key={workspace.id}>

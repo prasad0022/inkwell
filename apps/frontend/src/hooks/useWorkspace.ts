@@ -3,6 +3,7 @@ import {
   workspaceApi,
   CreateWorkspaceInput,
   InviteMemberInput,
+  UpdateWorkspaceInput,
 } from "@/lib/api/workspace.api";
 import { Workspace } from "@/types/api";
 
@@ -27,6 +28,24 @@ export const useCreateWorkspace = () => {
   return useMutation({
     mutationFn: (input: CreateWorkspaceInput) => workspaceApi.create(input),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+    },
+  });
+};
+
+export const useUpdateWorkspace = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      slug,
+      input,
+    }: {
+      slug: string;
+      input: UpdateWorkspaceInput;
+    }) => workspaceApi.update(slug, input),
+    onSuccess: (_, { slug }) => {
+      queryClient.invalidateQueries({ queryKey: ["workspace", slug] });
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });
     },
   });

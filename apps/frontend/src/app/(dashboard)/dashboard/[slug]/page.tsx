@@ -20,7 +20,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, FileText, ChevronRight, Loader2 } from "lucide-react";
+import { Plus, FileText, ChevronRight, Loader2, Settings } from "lucide-react";
 import { AxiosError } from "axios";
 import type { Document } from "@/types/api";
 import type { ApiError } from "@/types/api";
@@ -134,6 +134,16 @@ export default function WorkspacePage() {
                 Members
               </Button>
             </Link>
+
+            {currentUserRole === "OWNER" && (
+              <Link href={`/dashboard/${slug}/settings`}>
+                <Button variant="outline" className="gap-2">
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </Button>
+              </Link>
+            )}
+
             {canEdit && (
               <Button
                 onClick={() => setShowCreateModal(true)}
