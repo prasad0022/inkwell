@@ -1,0 +1,95 @@
+name: Inkwell CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # ── Job 1: Lint and type check ──────────────────────────────────
+  lint-and-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install --install-strategy=nested --include=dev
+
+      - name: Type check backend
+        run: |
+          cd apps/backend
+          npx tsc --noEmit
+
+      - name: Type check frontend
+        run: |
+          cd apps/frontend
+          npx tsc --noEmit
+
+  # ── Job 2: Deploy backend to EC2 ────────────────────────────────
+  deploy-backend:
+    name: Deploy Backend to EC2
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck # only runs if lint passes
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_PORT }}
+          script: |
+            cd ~/inkwell
+
+            # Pull latest code
+            git checkout -- package-lock.json
+            git pull origin main
+
+            # Install dependencies
+            cd apps/backend
+            npm install --install-strategy=nested --include=dev
+
+            # Regenerate Prisma client
+            npx prisma generate --schema=../../packages/database/prisma/schema.prisma
+
+            # Run migrations
+            npx prisma migrate deploy --schema=../../packages/database/prisma/schema.prisma
+
+            # Build TypeScript
+            npm run build
+
+            # Restart with PM2
+            pm2 restart inkwell-backend
+
+            echo "✅ Backend deployed successfully"
+
+  # ── Job 3: Verify deployment ────────────────────────────────────
+  verify-deployment:
+    name: Verify Deployment
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+
+    steps:
+      - name: Health check
+        run: |
+          sleep 10
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://inkwell-api.mooo.com/health)
+          if [ $response -eq 200 ]; then
+            echo "✅ Health check passed — API is live"
+          else
+            echo "❌ Health check failed — status: $response"
+            exit 1
+          fi
