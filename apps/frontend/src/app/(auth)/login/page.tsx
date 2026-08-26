@@ -57,7 +57,7 @@ export default function LoginPage() {
             id="email"
             name="email"
             type="email"
-            placeholder="prasad@example.com"
+            placeholder="john@example.com"
             value={form.email}
             onChange={handleChange}
             disabled={isPending}
