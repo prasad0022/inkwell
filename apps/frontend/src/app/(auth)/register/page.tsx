@@ -71,7 +71,7 @@ export default function RegisterPage() {
             id="name"
             name="name"
             type="text"
-            placeholder="Prasad Khose"
+            placeholder="John Walker"
             value={form.name}
             onChange={handleChange}
             disabled={isPending}

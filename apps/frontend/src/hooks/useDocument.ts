@@ -65,3 +65,12 @@ export const useDeleteDocument = () => {
     },
   });
 };
+
+export const useSearchDocuments = (workspaceId: string, query: string) => {
+  return useQuery({
+    queryKey: ["documents-search", workspaceId, query],
+    queryFn: () => documentApi.search(workspaceId, query),
+    enabled: !!workspaceId && query.trim().length >= 2,
+    staleTime: 1000 * 30, // 30 seconds — search results can be slightly stale
+  });
+};

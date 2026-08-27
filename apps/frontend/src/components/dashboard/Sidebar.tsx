@@ -27,6 +27,8 @@ import {
 import { AxiosError } from "axios";
 import type { User, Workspace, Document } from "@/types/api";
 import type { ApiError } from "@/types/api";
+import SearchBar from "@/components/dashboard/SearchBar";
+import { useWorkspace } from "@/hooks/useWorkspace";
 
 interface SidebarProps {
   user: User;
@@ -59,6 +61,11 @@ function WorkspaceDocuments({
 
   return (
     <div className="ml-4 mt-1 space-y-0.5">
+      {/* Search bar */}
+      <div className="px-0 py-1">
+        <SearchBar workspaceId={workspaceId} slug={slug} />
+      </div>
+
       {documents?.map((doc: Document) => {
         const isActive = pathname.includes(`/doc/${doc.id}`);
         return (

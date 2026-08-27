@@ -6,6 +6,7 @@ import {
   update,
   remove,
 } from "./document.controller";
+import { search } from "./document.search.controller";
 import { authenticate } from "../../middleware/auth.middleware";
 import { requireWorkspaceRole } from "../../middleware/permissions.middleware";
 
@@ -18,6 +19,11 @@ router.get(
   "/workspace/:workspaceId",
   requireWorkspaceRole(["OWNER", "EDITOR", "VIEWER"]),
   getByWorkspace,
+);
+router.get(
+  "/search/:workspaceId",
+  requireWorkspaceRole(["OWNER", "EDITOR", "VIEWER"]),
+  search,
 );
 router.get(
   "/:documentId",

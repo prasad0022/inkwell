@@ -14,6 +14,15 @@ export interface UpdateDocumentInput {
   isPublic?: boolean;
 }
 
+export interface SearchResult {
+  id: string;
+  title: string;
+  emoji: string | null;
+  excerpt: string;
+  workspaceId: string;
+  updatedAt: string;
+}
+
 export const documentApi = {
   create: async (input: CreateDocumentInput) => {
     const { data } = await apiClient.post("/api/documents", input);
@@ -42,6 +51,17 @@ export const documentApi = {
 
   delete: async (documentId: string) => {
     const { data } = await apiClient.delete(`/api/documents/${documentId}`);
+    return data.data;
+  },
+
+  search: async (
+    workspaceId: string,
+    query: string,
+  ): Promise<SearchResult[]> => {
+    const { data } = await apiClient.get(
+      `/api/documents/search/${workspaceId}`,
+      { params: { q: query } },
+    );
     return data.data;
   },
 };

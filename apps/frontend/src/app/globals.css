@@ -36,3 +36,12 @@
   width: 16px;
   height: 16px;
 }
+
+/* Search result highlights */
+.search-excerpt b {
+  background-color: #fef08a;
+  color: #713f12;
+  font-weight: 600;
+  border-radius: 2px;
+  padding: 0 2px;
+}
